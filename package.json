@@ -1,25 +1,18 @@
 {
   "name": "financial-automation",
   "version": "1.0.0",
-  "description": "Financial Automation App for CA practices",
+  "description": "Financial Statement Automation Tool",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "vite",
-    "build": "vite build && electron-builder"
+    "start": "electron ."
   },
   "dependencies": {
-    "exceljs": "^4.4.0",
-    "react": "^18.2.0",{\n  "name": "financial-automation",\n  "version": "1.0.0",\n  "description": "Financial Statement Automation Tool",\n  "main": "main.js",\n  "scripts": {\n    "start": "electron ."\n  },\n  "dependencies": {\n    "exceljs": "^4.3.0",\n    "pdf-parse": "^1.1.1"\n  },\n  "devDependencies": {\n    "electron": "^25.0.0",\n    "electron-builder": "^24.0.0"\n  }\n}
-    "react-dom": "^18.2.0",
-    "lucide-react": "^0.344.0"
+    "exceljs": "^4.3.0",
+    "pdf-parse": "^1.1.1",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "electron": "^29.0.0",
-    "electron-builder": "^24.9.1",
-    "vite": "^5.1.0",
-    "tailwindcss": "^3.4.1",
-    "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.35"
+    "electron": "^25.0.0",
+    "electron-builder": "^24.0.0"
   }
 }
