@@ -1,5 +1,11 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const fs = require('fs');
+
+const customMappingPath = path.join(app.getPath('userData'), 'custom_mapping.json');
+if (!fs.existsSync(customMappingPath)) {
+  fs.writeFileSync(customMappingPath, '{}');
+}
 
 function createWindow () {
   const mainWindow = new BrowserWindow({
@@ -21,8 +27,4 @@ app.whenReady().then(() => {
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-});
-
-app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit();
 });
