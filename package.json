@@ -1,16 +1,9 @@
 {
   "name": "financial-automation",
   "version": "1.0.0",
-  "description": "Financial Statement Automation Tool",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
-  },
-  "dependencies": {
-    "exceljs": "^4.3.0",
-    "pdf-parse": "^1.1.1",
-    "xlsx": "^0.18.5",
-    "xml2js": "^0.6.2"
+    "build": "electron-builder"
   },
   "devDependencies": {
     "electron": "^25.0.0",
