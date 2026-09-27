@@ -1,16 +1,4 @@
-    <script>
-        const { processFinancials } = require('./processor.js');
-
-        document.querySelector('button').addEventListener('click', async () => {
-            const btn = document.querySelector('button');
-            const originalText = btn.innerText;
-            btn.innerText = 'Processing...';
-            btn.style.backgroundColor = '#94a3b8';
-            
-            // Get the selected entity type (extracts first word like 'proprietorship' or 'company')
-            const entitySelect = document.querySelectorAll('select')[0].value;
-            const entityType = entitySelect.split(' ')[0].toLowerCase();
-            <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -106,23 +94,3 @@
     </script>
 </body>
 </html>
-            // In Electron, file inputs have a .path property giving the real system path
-            const formatTemplate = document.querySelectorAll('input[type="file"]')[0].files[0]?.path;
-            const prevYear = document.querySelectorAll('input[type="file"]')[1].files[0]?.path;
-            const currentYear = document.querySelectorAll('input[type="file"]')[2].files[0]?.path;
-
-            try {
-                const result = await processFinancials(entityType, formatTemplate, prevYear, currentYear);
-                if (result.success) {
-                    alert('Success! Audited Excel file generated at:\n' + result.path);
-                } else {
-                    alert('Error: ' + result.error);
-                }
-            } catch (err) {
-                alert('System Error: ' + err.message);
-            }
-            
-            btn.innerText = originalText;
-            btn.style.backgroundColor = '#2563eb';
-        });
-    </script>
