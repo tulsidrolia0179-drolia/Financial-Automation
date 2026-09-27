@@ -10,7 +10,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4name: Build Windows App
+      uses: action: Build Windows App
 
 on:
   push:
