@@ -2,6 +2,7 @@ const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
+const xml2js = require('xml2js');
 
 const tallyToSchedule3Map = {
     'Capital Account': { type: 'EquityAndLiabilities', head: 'Shareholder\'s Funds', subHead: 'Share Capital' },
@@ -48,7 +49,7 @@ async function extractTallyData(tbFilePath) {
     const tbWorkbook = new ExcelJS.Workbook();
     await tbWorkbook.xlsx.readFile(tbFilePath);
     const ws = tbWorkbook.worksheets[0];
-    const financialData = { EquityAndLiabilities: {}, Assets: {}, Income: {}, Expense: {} };
+    const financialData = { EquityAndLiabilities: {}, Assets: {}, Income: {}, Expense: {}, AssetAdditions: [] };
     let currentActiveGroup = null;
 
     ws.eachRow((row, rowNumber) => {
@@ -76,6 +77,59 @@ async function extractTallyData(tbFilePath) {
     return financialData;
 }
 
+// TRANSACTION-LEVEL XML ENGINE
+async function extractTallyXMLData(xmlPath) {
+    console.log('Initiating Transaction-Level Tally XML extraction...');
+    const xmlString = fs.readFileSync(xmlPath, 'utf-8');
+    const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: true });
+    const result = await parser.parseStringPromise(xmlString);
+
+    const financialData = { EquityAndLiabilities: {}, Assets: {}, Income: {}, Expense: {}, AssetAdditions: [] };
+
+    try {
+        const messages = result.ENVELOPE?.BODY?.DATA?.TALLYMESSAGE || [];
+        const msgArray = Array.isArray(messages) ? messages : [messages];
+        
+        for (const msg of msgArray) {
+            if (msg.LEDGER && msg.LEDGER.PARENT) {
+                const parentGroup = msg.LEDGER.PARENT;
+                const closingBal = parseFloat(msg.LEDGER.CLOSINGBALANCE) || 0;
+                if (tallyToSchedule3Map[parentGroup]) {
+                    const { type, subHead } = tallyToSchedule3Map[parentGroup];
+                    if (!financialData[type][subHead]) financialData[type][subHead] = 0;
+                    financialData[type][subHead] += Math.abs(closingBal);
+                }
+            }
+
+            if (msg.VOUCHER && msg.VOUCHER.DATE) {
+                const voucherDate = msg.VOUCHER.DATE; // YYYYMMDD
+                const entries = msg.VOUCHER['ALLLEDGERENTRIES.LIST'] || [];
+                const entryArray = Array.isArray(entries) ? entries : [entries];
+                
+                for (const entry of entryArray) {
+                    const ledgerName = entry.LEDGERNAME || '';
+                    const amount = parseFloat(entry.AMOUNT) || 0;
+                    if (amount < 0 && (ledgerName.toLowerCase().includes('asset') || ledgerName.toLowerCase().includes('machinery') || ledgerName.toLowerCase().includes('computer'))) {
+                        const year = voucherDate.substring(0, 4);
+                        const month = voucherDate.substring(4, 6);
+                        const day = voucherDate.substring(6, 8);
+                        financialData.AssetAdditions.push({
+                            asset: ledgerName,
+                            amount: Math.abs(amount),
+                            date: new Date(`${year}-${month}-${day}`)
+                        });
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.warn("XML Structure warning:", err.message);
+    }
+
+    console.log(`XML Extraction complete. Found ${financialData.AssetAdditions.length} fixed asset additions with precise dates.`);
+    return financialData;
+}
+
 function calculateITDepreciation(assetValue, rate, dateOfPurchase) {
     const purchaseDate = new Date(dateOfPurchase);
     const cutoffDate = new Date(purchaseDate.getFullYear(), 9, 4);
@@ -86,7 +140,6 @@ function calculateCompaniesActDepreciation(assetValue, usefulLife) {
     return (assetValue - (assetValue * 0.05)) / usefulLife;
 }
 
-// NEW FORMAT PRESERVATION ENGINE
 async function processFinancials(entityType, templatePath, prevYearPath, currentYearPath) {
     try {
         const workbook = new ExcelJS.Workbook();
@@ -105,17 +158,19 @@ async function processFinancials(entityType, templatePath, prevYearPath, current
 
         let tallyData = null;
         if (currentYearPath && fs.existsSync(currentYearPath)) {
-            tallyData = await extractTallyData(currentYearPath);
+            if (currentYearPath.toLowerCase().endsWith('.xml')) {
+                tallyData = await extractTallyXMLData(currentYearPath);
+            } else {
+                tallyData = await extractTallyData(currentYearPath);
+            }
         }
 
         if (tallyData) {
             const bsSheet = workbook.getWorksheet('Balance Sheet') || workbook.worksheets[0];
 
             if (hasTemplate) {
-                // --- NON-DESTRUCTIVE INJECTION ENGINE ---
                 console.log('Template detected. Executing Non-Destructive Format Preservation...');
                 
-                // Flatten data to lowercase for robust matching
                 const flatData = {};
                 const normalize = (str) => str.toLowerCase().replace(/\s+/g, ' ').trim();
 
@@ -127,12 +182,10 @@ async function processFinancials(entityType, templatePath, prevYearPath, current
                     else flatData[key].py = amount;
                 }
 
-                // Scan user's format and inject directly without overwriting formulas
-                bsSheet.eachRow((row, rowNumber) => {
+                bsSheet.eachRow((row) => {
                     let textCol = -1;
                     let foundKey = null;
 
-                    // Find matching label in the row
                     row.eachCell((cell, colNumber) => {
                         if (cell.type === ExcelJS.ValueType.String && cell.text) {
                             const cleanText = normalize(cell.text);
@@ -143,13 +196,11 @@ async function processFinancials(entityType, templatePath, prevYearPath, current
                         }
                     });
 
-                    // If found, safely inject into subsequent columns (Assuming Col + 2 = CY, Col + 3 = PY)
                     if (foundKey) {
                         const data = flatData[foundKey];
                         const cyCell = row.getCell(textCol + 2);
                         const pyCell = row.getCell(textCol + 3);
 
-                        // Only overwrite if it's NOT a formula (preserves client's =SUM functions)
                         if (data.cy !== undefined && !cyCell.formula) {
                             cyCell.value = data.cy;
                             cyCell.numFmt = '#,##0.00';
@@ -162,7 +213,6 @@ async function processFinancials(entityType, templatePath, prevYearPath, current
                 });
 
             } else {
-                // --- FALLBACK: BUILD FROM SCRATCH ---
                 bsSheet.columns = [
                     { header: 'Particulars', key: 'particulars', width: 40 },
                     { header: 'Note No.', key: 'note', width: 10 },
@@ -180,6 +230,33 @@ async function processFinancials(entityType, templatePath, prevYearPath, current
                 for (const [subHead, amount] of Object.entries(tallyData.Assets)) {
                     bsSheet.addRow({ particulars: `   ${subHead}`, cy: amount, py: prevYearData[subHead] || '' });
                 }
+            }
+
+            // AUTO-GENERATE DEPRECIATION SHEET IF XML ASSET ADDITIONS EXIST
+            if (tallyData.AssetAdditions && tallyData.AssetAdditions.length > 0) {
+                console.log('Generating automated depreciation schedule from XML transaction dates...');
+                let depSheet = workbook.getWorksheet('Depreciation Schedule');
+                if (!depSheet) depSheet = workbook.addWorksheet('Depreciation Schedule');
+                
+                depSheet.columns = [
+                    { header: 'Asset Name', key: 'asset', width: 30 },
+                    { header: 'Date of Addition', key: 'date', width: 20 },
+                    { header: 'Amount Added (₹)', key: 'amount', width: 20 },
+                    { header: 'Days Used (>180?)', key: 'days', width: 20 },
+                    { header: 'IT Act Dep (%)', key: 'dep', width: 15 }
+                ];
+                
+                tallyData.AssetAdditions.forEach(asset => {
+                    const cutoffDate = new Date(asset.date.getFullYear(), 9, 4); // Oct 4
+                    const isMoreThan180 = asset.date <= cutoffDate ? 'Yes (>180)' : 'No (<180)';
+                    depSheet.addRow({
+                        asset: asset.asset,
+                        date: asset.date.toISOString().split('T')[0],
+                        amount: asset.amount,
+                        days: isMoreThan180,
+                        dep: 'Auto-Calculated'
+                    });
+                });
             }
         }
 
