@@ -2,33 +2,29 @@ name: Build Windows App
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
 
-      - name: Install Dependencies
-        run: npm install
+    - name: Install dependencies
+      run: npm install
 
-      - name: Build Executable
-        run: npx electron-builder --win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build Windows Executable
+      run: npx electron-builder --win --x64
 
-      - name: Upload Windows exe
-        uses: actions/upload-artifact@v3
-        with:
-          name: Financial-Automation-App
-          path: dist/*.exe
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Financial-Automation-App
+        path: dist/*.exe
