@@ -4,7 +4,9 @@ const fs = require('fs');
 const pdfParse = require('pdf-parse');
 const xml2js = require('xml2js');
 
-const tallyToSchedule3Map = {
+const MEMORY_FILE = path.join(__dirname, 'custom_mapping.json');
+
+const baseTallyToSchedule3Map = {
     'Capital Account': { type: 'EquityAndLiabilities', head: 'Shareholder\'s Funds', subHead: 'Share Capital' },
     'Reserves & Surplus': { type: 'EquityAndLiabilities', head: 'Shareholder\'s Funds', subHead: 'Reserves & Surplus' },
     'Long Term Borrowings': { type: 'EquityAndLiabilities', head: 'Non-Current Liabilities', subHead: 'Long-Term Borrowings' },
@@ -27,6 +29,24 @@ const tallyToSchedule3Map = {
     'Indirect Expenses': { type: 'Expense', head: 'Expenses', subHead: 'Other Expenses' }
 };
 
+// SMART MEMORY ENGINE
+function getActiveMapping() {
+    let customMap = {};
+    if (fs.existsSync(MEMORY_FILE)) {
+        try {
+            customMap = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf-8'));
+        } catch (e) {
+            console.warn('Warning: custom_mapping.json is invalid, using defaults.');
+        }
+    } else {
+        // Auto-create the memory database on first run
+        fs.writeFileSync(MEMORY_FILE, JSON.stringify({
+            "_EXAMPLE_CUSTOM_LEDGER_": { "type": "Assets", "head": "Current Assets", "subHead": "Custom Asset Name" }
+        }, null, 4));
+    }
+    return { ...baseTallyToSchedule3Map, ...customMap };
+}
+
 async function extractPDFData(pdfPath) {
     console.log('Initiating PDF extraction...');
     const dataBuffer = fs.readFileSync(pdfPath);
@@ -46,6 +66,7 @@ async function extractPDFData(pdfPath) {
 }
 
 async function extractTallyData(tbFilePath) {
+    const activeMapping = getActiveMapping();
     const tbWorkbook = new ExcelJS.Workbook();
     await tbWorkbook.xlsx.readFile(tbFilePath);
     const ws = tbWorkbook.worksheets[0];
@@ -60,10 +81,10 @@ async function extractTallyData(tbFilePath) {
         const credit = row.getCell(4).value || 0;
         const closing = row.getCell(5).value || 0;
 
-        if (tallyToSchedule3Map[particulars]) {
+        if (activeMapping[particulars]) {
             currentActiveGroup = particulars;
         } else if (currentActiveGroup) {
-            const mapping = tallyToSchedule3Map[currentActiveGroup];
+            const mapping = activeMapping[currentActiveGroup];
             if (!mapping) return;
             const { type, subHead } = mapping;
             let netBalance = 0;
@@ -77,9 +98,9 @@ async function extractTallyData(tbFilePath) {
     return financialData;
 }
 
-// TRANSACTION-LEVEL XML ENGINE
 async function extractTallyXMLData(xmlPath) {
     console.log('Initiating Transaction-Level Tally XML extraction...');
+    const activeMapping = getActiveMapping();
     const xmlString = fs.readFileSync(xmlPath, 'utf-8');
     const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: true });
     const result = await parser.parseStringPromise(xmlString);
@@ -94,8 +115,8 @@ async function extractTallyXMLData(xmlPath) {
             if (msg.LEDGER && msg.LEDGER.PARENT) {
                 const parentGroup = msg.LEDGER.PARENT;
                 const closingBal = parseFloat(msg.LEDGER.CLOSINGBALANCE) || 0;
-                if (tallyToSchedule3Map[parentGroup]) {
-                    const { type, subHead } = tallyToSchedule3Map[parentGroup];
+                if (activeMapping[parentGroup]) {
+                    const { type, subHead } = activeMapping[parentGroup];
                     if (!financialData[type][subHead]) financialData[type][subHead] = 0;
                     financialData[type][subHead] += Math.abs(closingBal);
                 }
@@ -232,7 +253,6 @@ async function processFinancials(entityType, templatePath, prevYearPath, current
                 }
             }
 
-            // AUTO-GENERATE DEPRECIATION SHEET IF XML ASSET ADDITIONS EXIST
             if (tallyData.AssetAdditions && tallyData.AssetAdditions.length > 0) {
                 console.log('Generating automated depreciation schedule from XML transaction dates...');
                 let depSheet = workbook.getWorksheet('Depreciation Schedule');
