@@ -1,6 +1,7 @@
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs');
+const pdfParse = require('pdf-parse');
 
 // Robust Mapping Dictionary: Tally Groups -> Schedule 3 / IT Act Heads
 const tallyToSchedule3Map = {
@@ -26,6 +27,36 @@ const tallyToSchedule3Map = {
     'Indirect Expenses': { type: 'Expense', head: 'Expenses', subHead: 'Other Expenses' }
 };
 
+// PDF Extractor for Previous Year Audited Statements
+async function extractPDFData(pdfPath) {
+    console.log('Initiating PDF extraction for previous year data...');
+    const dataBuffer = fs.readFileSync(pdfPath);
+    const data = await pdfParse(dataBuffer);
+    
+    const pdfText = data.text;
+    const extractedBalances = {};
+
+    const lines = pdfText.split('\n');
+    for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        
+        // Regex to find text ending with a number (handles commas and decimals)
+        // e.g. "Trade Receivables 1,50,000.00" or "Share Capital 50000"
+        const match = line.match(/^([a-zA-Z\s\(\),&]+)\s+([\d,]+\.?\d*)$/);
+        if (match) {
+            const head = match[1].trim();
+            const amount = parseFloat(match[2].replace(/,/g, ''));
+            if (head && !isNaN(amount)) {
+                extractedBalances[head] = amount;
+            }
+        }
+    }
+    
+    console.log(`Extracted ${Object.keys(extractedBalances).length} data points from PDF successfully.`);
+    return extractedBalances;
+}
+
 // Advanced Tally Trial Balance Extractor
 async function extractTallyData(tbFilePath) {
     console.log('Initiating Tally TB extraction engine...');
@@ -42,12 +73,9 @@ async function extractTallyData(tbFilePath) {
 
     let currentActiveGroup = null;
 
-    // Parse Row by Row
     ws.eachRow((row, rowNumber) => {
-        // Tally exports usually start data below row 5
         if (rowNumber < 5) return;
 
-        // Typically: Col 1 = Particulars, Col 2 = Opening, Col 3 = Debit, Col 4 = Credit, Col 5 = Closing
         const particulars = row.getCell(1).text ? row.getCell(1).text.trim() : null;
         if (!particulars) return;
 
@@ -55,23 +83,18 @@ async function extractTallyData(tbFilePath) {
         const credit = row.getCell(4).value || 0;
         const closing = row.getCell(5).value || 0;
 
-        // Check if this row is a Group Header
         if (tallyToSchedule3Map[particulars]) {
             currentActiveGroup = particulars;
-        } 
-        // If it's a ledger account sitting under a group
-        else if (currentActiveGroup) {
+        } else if (currentActiveGroup) {
             const mapping = tallyToSchedule3Map[currentActiveGroup];
             if (!mapping) return;
 
             const { type, subHead } = mapping;
-            
-            // Determine net balance
             let netBalance = 0;
+            
             if (typeof closing === 'number' && closing !== 0) {
-                netBalance = closing; // Prefer exact closing balance if present
+                netBalance = closing;
             } else {
-                // Fallback to calculation
                 netBalance = (type === 'Assets' || type === 'Expense') ? (debit - credit) : (credit - debit);
             }
 
@@ -88,26 +111,22 @@ async function extractTallyData(tbFilePath) {
 
 // Mathematical Depreciation Engines
 function calculateITDepreciation(assetValue, rate, dateOfPurchase) {
-    // Income Tax Act 1961 - 180 Days rule
     const purchaseDate = new Date(dateOfPurchase);
-    const cutoffDate = new Date(purchaseDate.getFullYear(), 9, 4); // Oct 4th approx for 180 days in leap/non-leap
+    const cutoffDate = new Date(purchaseDate.getFullYear(), 9, 4);
     const applicableRate = purchaseDate > cutoffDate ? (rate / 2) : rate;
     return assetValue * (applicableRate / 100);
 }
 
-function calculateCompaniesActDepreciation(assetValue, usefulLife, yearsUsed = 0) {
-    // Schedule II of Companies Act, 2013 - SLM approach with 5% Salvage
+function calculateCompaniesActDepreciation(assetValue, usefulLife) {
     const salvageValue = assetValue * 0.05;
     const depreciableAmount = assetValue - salvageValue;
-    const annualDepreciation = depreciableAmount / usefulLife;
-    return annualDepreciation;
+    return depreciableAmount / usefulLife;
 }
 
 // Main Engine
 async function processFinancials(entityType, templatePath, prevYearPath, currentYearPath) {
     try {
         console.log(`Starting generation for: ${entityType.toUpperCase()}`);
-        
         const workbook = new ExcelJS.Workbook();
         
         if (templatePath && fs.existsSync(templatePath)) {
@@ -118,13 +137,20 @@ async function processFinancials(entityType, templatePath, prevYearPath, current
             workbook.addWorksheet('Depreciation Schedule');
         }
 
+        // Extract Previous Year Data (PDF Parsing integration)
+        let prevYearData = {};
+        if (prevYearPath && fs.existsSync(prevYearPath)) {
+            if (prevYearPath.toLowerCase().endsWith('.pdf')) {
+                prevYearData = await extractPDFData(prevYearPath);
+            }
+        }
+
         let tallyData = null;
         if (currentYearPath && fs.existsSync(currentYearPath)) {
             tallyData = await extractTallyData(currentYearPath);
         }
 
         if (tallyData) {
-            // Populate Balance Sheet intelligently
             const bsSheet = workbook.getWorksheet('Balance Sheet') || workbook.worksheets[0];
             bsSheet.columns = [
                 { header: 'Particulars', key: 'particulars', width: 40 },
@@ -133,32 +159,30 @@ async function processFinancials(entityType, templatePath, prevYearPath, current
                 { header: 'Previous Year (₹)', key: 'py', width: 20 }
             ];
 
-            // Write Equity & Liabilities
-            let rowCounter = 2;
             bsSheet.addRow({ particulars: 'I. EQUITY AND LIABILITIES' }).font = { bold: true };
             
             for (const [subHead, amount] of Object.entries(tallyData.EquityAndLiabilities)) {
-                bsSheet.addRow({ particulars: `   ${subHead}`, cy: amount });
+                // Automate Word-to-Word Matching from PDF for Previous Year Opening Balance
+                let openingBalance = prevYearData[subHead] || '';
+                bsSheet.addRow({ particulars: `   ${subHead}`, cy: amount, py: openingBalance });
             }
 
-            // Write Assets
-            bsSheet.addRow({}); // Empty row
+            bsSheet.addRow({}); 
             bsSheet.addRow({ particulars: 'II. ASSETS' }).font = { bold: true };
 
             for (const [subHead, amount] of Object.entries(tallyData.Assets)) {
-                bsSheet.addRow({ particulars: `   ${subHead}`, cy: amount });
+                let openingBalance = prevYearData[subHead] || '';
+                bsSheet.addRow({ particulars: `   ${subHead}`, cy: amount, py: openingBalance });
             }
 
-            // Format numbers
             bsSheet.eachRow((row) => {
                 const cyCell = row.getCell('cy');
-                if (typeof cyCell.value === 'number') {
-                    cyCell.numFmt = '#,##0.00';
-                }
+                const pyCell = row.getCell('py');
+                if (typeof cyCell.value === 'number') cyCell.numFmt = '#,##0.00';
+                if (typeof pyCell.value === 'number') pyCell.numFmt = '#,##0.00';
             });
         }
 
-        // Export logic
         const outputPath = path.join(__dirname, `Final_Audited_Financials_${Date.now()}.xlsx`);
         await workbook.xlsx.writeFile(outputPath);
         console.log(`Excel file successfully created at: ${outputPath}`);
