@@ -10,16 +10,8 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: action: Build Windows App
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  build:
-    runs-on: windows-latest
-
+      uses: actions/checkout@v4
+      
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,14 +32,3 @@ jobs:
         with:
           name: Windows-App
           path: dist/*.exe
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 18
-
-    - name: Install dependencies
-      run: npm install
-
-    - name: Build application
-      run: npm run build
