@@ -1,105 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Financial Automation Tool</title>
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
-    header { background-color: #0f172a; color: white; padding: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 12px; }
-    .icon-box { background-color: #2563eb; padding: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-    h1 { margin: 0; font-size: 1.25rem; font-weight: bold; letter-spacing: 0.025em; }
-    main { flex: 1; overflow-y: auto; padding: 32px; }
-    .container { max-width: 800px; margin: 0 auto; background-color: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); padding: 32px; border: 1px solid #e2e8f0; }
-    h2 { font-size: 1.5rem; margin-top: 0; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0; color: #0f172a; }
-    .form-group { margin-bottom: 24px; }
-    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; color: #334155; }
-    select, input[type="file"] { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; background-color: #f8fafc; font-size: 0.875rem; }
-    .optional-box { background-color: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 24px; }
-    .optional-box p { font-size: 0.75rem; color: #64748b; margin-top: 0; margin-bottom: 16px; }
-    button { width: 100%; background-color: #2563eb; color: white; font-weight: 600; padding: 12px; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; }
-    button:hover { background-color: #1d4ed8; }
-  </style>
+    <title>Financial Automation</title>
 </head>
 <body>
-  <header>
-    <div class="icon-box">
-      <svg style="width: 24px; height: 24px; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-      </svg>
-    </div>
-    <h1>Financial Automation</h1>
-  </header>
-  <main>
-    <div class="container">
-      <h2>Generate Financial Statements</h2>
-      <form>
-        <div class="form-group">
-          <label>1. Select Entity Type</label>
-          <select id="entity-type">
-            <option>Proprietorship (Non-Corporate)</option>
-            <option>Partnership (Non-Corporate)</option>
-            <option>Trust (Non-Corporate)</option>
-            <option>Company (Schedule 3)</option>
-          </select>
+    <main>
+        <div>
+            <form>
+                <div class="form-group">
+                    <label>1. Select Entity Type</label>
+                    <select id="entity-type">
+                        <option>Company</option>
+                        <option>LLP</option>
+                        <option>Firm</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>2. Upload Formatting Template (.xlsx)</label>
+                    <input type="file" id="template-file" accept=".xlsx, .xls">
+                </div>
+                <div class="optional-box">
+                    <label>3. Previous Year Data (Optional)</label>
+                    <p>Upload last year's audited financials or previous year depreciation sheet.</p>
+                    <select style="margin-bottom: 12px;">
+                        <option>Excel/PDF</option>
+                        <option>Tally</option>
+                        <option>SAP</option>
+                        <option>Oracle</option>
+                    </select>
+                    <input type="file" id="prev-year-file" accept=".pdf, .xlsx, .xls" multiple>
+                </div>
+                <div class="form-group">
+                    <label>4. Current Year Data Source (Tally / Trial Balance)</label>
+                    <select style="margin-bottom: 12px;">
+                        <option>Direct Fetch from Tally Export (Excel or XML)</option>
+                        <option>Standard Trial Balance</option>
+                    </select>
+                    <input type="file" id="current-year-file" accept=".xlsx, .xls, .csv, .xml">
+                </div>
+                <button type="button" id="process-btn">Process Financial Statements</button>
+            </form>
         </div>
-        <div class="form-group">
-          <label>2. Upload Formatting Template (.xlsx)</label>
-          <input type="file" id="template-file" accept=".xlsx, .xls">
-        </div>
-        <div class="optional-box">
-          <label>3. Previous Year Data (Optional)</label>
-          <p>Upload last year's audited financials or previous year depreciation sheet.</p>
-          <select style="margin-bottom: 12px;">
-            <option>Excel/PDF</option>
-            <option>Tally</option>
-            <option>SAP</option>
-            <option>Oracle</option>
-          </select>
-          <input type="file" id="prev-year-file" accept=".pdf, .xlsx, .xls" multiple>
-        </div>
-        <div class="form-group">
-          <label>4. Current Year Data Source (Tally / Trial Balance)</label>
-          <select style="margin-bottom: 12px;">
-            <option>Direct Fetch from Tally Export (Excel or XML)</option>
-            <option>Standard Trial Balance</option>
-          </select>
-          <input type="file" id="current-year-file" accept=".xlsx, .xls, .csv, .xml">
-        </div>
-        <button type="button" id="process-btn">Process Financial Statements</button>
-      </form>
-    </div>
-  </main>
-  <script>
-    const { processFinancials } = require('./processor.js');
+    </main>
+    <script>
+        const { processFinancials } = require('./processor.js');
 
-    document.getElementById('process-btn').addEventListener('click', async () => {
-      const btn = document.getElementById('process-btn');
-      const originalText = btn.innerText;
-      btn.innerText = 'Processing Tally Data...';
-      btn.style.backgroundColor = '#94a3b8';
+        document.getElementById('process-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('process-btn');
+            const originalText = btn.innerText;
+            btn.innerText = 'Processing Tally Data...';
+            btn.style.backgroundColor = '#94a3b8';
 
-      const entitySelect = document.getElementById('entity-type').value;
-      const entityType = entitySelect.split(' ')[0].toLowerCase();
+            const entitySelect = document.getElementById('entity-type').value;
+            const entityType = entitySelect.split(' ')[0].toLowerCase();
 
-      const formatTemplate = document.getElementById('template-file').files[0]?.path;
-      const prevYear = document.getElementById('prev-year-file').files[0]?.path;
-      const currentYear = document.getElementById('current-year-file').files[0]?.path;
+            const formatTemplate = document.getElementById('template-file').files[0].path;
+            const prevYear = Array.from(document.getElementById('prev-year-file').files).map(file => file.path);
+            const currentYear = document.getElementById('current-year-file').files[0]?.path;
 
-      try {
-        const result = await processFinancials(entityType, formatTemplate, prevYear, currentYear);
-        if (result.success) {
-          alert('Success! Audited Excel file generated at:\n' + result.path);
-        } else {
-          alert('Error: ' + result.error);
-        }
-      } catch (err) {
-        alert('System Error: ' + err.message);
-      }
-
-      btn.innerText = originalText;
-      btn.style.backgroundColor = '#2563eb';
-    });
-  </script>
+            try {
+                const result = await processFinancials(entityType, formatTemplate, prevYear, currentYear);
+                alert('Success: ' + result);
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.style.backgroundColor = '';
+            }
+        });
+    </script>
 </body>
 </html>
