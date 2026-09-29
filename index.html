@@ -1,72 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Financial Automation</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shree FinAuto - Gateway</title>
+    <style>
+        :root { --tally-teal: #1D5B79; --tally-pale-yellow: #FDFAF0; --tally-sidebar: #EBF5FB; --tally-hover: #D4E6F1; --text-dark: #333333; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--tally-pale-yellow); display: flex; height: 100vh; overflow: hidden; }
+        .header { position: absolute; top: 0; left: 0; right: 0; height: 50px; background-color: var(--tally-teal); color: white; display: flex; align-items: center; padding: 0 20px; font-size: 18px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .sidebar { width: 300px; background-color: var(--tally-sidebar); margin-top: 50px; border-right: 1px solid #ccc; display: flex; flex-direction: column; }
+        .menu-title { text-align: center; padding: 15px; background-color: var(--tally-teal); color: white; font-weight: bold; letter-spacing: 1px; }
+        .menu-section { padding: 10px 15px; font-weight: bold; color: var(--tally-teal); font-size: 14px; border-bottom: 1px solid #ddd; }
+        .menu-item { padding: 12px 25px; cursor: pointer; color: var(--text-dark); font-size: 15px; transition: background 0.2s; }
+        .menu-item:hover { background-color: var(--tally-hover); font-weight: bold; }
+        .workspace { flex: 1; margin-top: 50px; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .company-name { font-size: 28px; font-weight: bold; color: var(--tally-teal); margin-bottom: 30px; }
+        .upload-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); width: 100%; max-width: 500px; text-align: center; border: 1px dashed #ccc; }
+        .btn-primary { background-color: var(--tally-teal); color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 20px; font-weight: bold; width: 100%; }
+        .btn-primary:hover { background-color: #143E54; }
+    </style>
 </head>
 <body>
-    <main>
-        <div>
-            <form>
-                <div class="form-group">
-                    <label>1. Select Entity Type</label>
-                    <select id="entity-type">
-                        <option>Company</option>
-                        <option>LLP</option>
-                        <option>Firm</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>2. Upload Formatting Template (.xlsx)</label>
-                    <input type="file" id="template-file" accept=".xlsx, .xls">
-                </div>
-                <div class="optional-box">
-                    <label>3. Previous Year Data (Optional)</label>
-                    <p>Upload last year's audited financials or previous year depreciation sheet.</p>
-                    <select style="margin-bottom: 12px;">
-                        <option>Excel/PDF</option>
-                        <option>Tally</option>
-                        <option>SAP</option>
-                        <option>Oracle</option>
-                    </select>
-                    <input type="file" id="prev-year-file" accept=".pdf, .xlsx, .xls" multiple>
-                </div>
-                <div class="form-group">
-                    <label>4. Current Year Data Source (Tally / Trial Balance)</label>
-                    <select style="margin-bottom: 12px;">
-                        <option>Direct Fetch from Tally Export (Excel or XML)</option>
-                        <option>Standard Trial Balance</option>
-                    </select>
-                    <input type="file" id="current-year-file" accept=".xlsx, .xls, .csv, .xml">
-                </div>
-                <button type="button" id="process-btn">Process Financial Statements</button>
-            </form>
+    <div class="header">Shree FinAuto</div>
+    <div class="sidebar">
+        <div class="menu-title">Gateway of FinAuto</div>
+        <div class="menu-section">Master Setup</div>
+        <div class="menu-item" id="btn-upload-template">1. Upload Client Format (Excel)</div>
+        <div class="menu-item" id="btn-mapping">2. Ledger to Sch 3 Mapping</div>
+        <div class="menu-section">Data Import</div>
+        <div class="menu-item" id="btn-prev-year">3. Load Previous Year (Audited)</div>
+        <div class="menu-item" id="btn-curr-year">4. Load Current Year (Tally/TB)</div>
+        <div class="menu-section">Processing</div>
+        <div class="menu-item" id="btn-depreciation">5. Depreciation Engine</div>
+        <div class="menu-item" style="color: green; font-weight: bold;" id="btn-generate">6. Generate Final Statements</div>
+    </div>
+    <div class="workspace">
+        <div class="company-name">Shree Drolia Financials</div>
+        <div class="upload-card">
+            <h3 style="margin-top:0; color: var(--tally-teal);">Current Status</h3>
+            <p id="status-text" style="color: gray;">Waiting for Client Template...</p>
+            <button class="btn-primary" id="action-btn">Select Template File</button>
         </div>
-    </main>
+    </div>
     <script>
-        const { processFinancials } = require('./processor.js');
-
-        document.getElementById('process-btn').addEventListener('click', async () => {
-            const btn = document.getElementById('process-btn');
-            const originalText = btn.innerText;
-            btn.innerText = 'Processing Tally Data...';
-            btn.style.backgroundColor = '#94a3b8';
-
-            const entitySelect = document.getElementById('entity-type').value;
-            const entityType = entitySelect.split(' ')[0].toLowerCase();
-
-            const formatTemplate = document.getElementById('template-file').files[0].path;
-            const prevYear = Array.from(document.getElementById('prev-year-file').files).map(file => file.path);
-            const currentYear = document.getElementById('current-year-file').files[0]?.path;
-
-            try {
-                const result = await processFinancials(entityType, formatTemplate, prevYear, currentYear);
-                alert('Success: ' + result);
-            } catch (err) {
-                alert('Error: ' + err.message);
-            } finally {
-                btn.innerText = originalText;
-                btn.style.backgroundColor = '';
-            }
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const text = e.target.innerText;
+                document.getElementById('status-text').innerText = 'Selected: ' + text;
+                document.getElementById('action-btn').innerText = 'Process ' + text.split('.')[0];
+            });
         });
     </script>
 </body>
