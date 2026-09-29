@@ -42,7 +42,41 @@
             <button class="btn-primary" id="action-btn">Select Template File</button>
         </div>
     </div>
-    <script>
+    <     s    c    <script>
+        let currentTask = '';
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const text = e.target.innerText;
+                currentTask = text.split('.')[0];
+                document.getElementById('status-text').innerText = 'Selected: ' + text;
+                document.getElementById('action-btn').innerText = 'Select File for Step ' + currentTask;
+            });
+        });
+
+        document.getElementById('action-btn').addEventListener('click', async () => {
+            if (!currentTask) {
+                alert("Please select a task from the sidebar first.");
+                return;
+            }
+            document.getElementById('status-text').innerText = 'Opening file browser...';
+            const filePath = await window.api.selectFile();
+            if (filePath) {
+                document.getElementById('status-text').innerText = `Reading file data...`;
+                const result = await window.api.processFile(filePath, currentTask);
+                if (result && result.success) {
+                    if (result.data) {
+                        document.getElementById('status-text').innerText = `Success! Found ${result.data.length} preview rows. System ready for template mapping.`;
+                    } else {
+                        document.getElementById('status-text').innerText = result.message;
+                    }
+                } else {
+                    document.getElementById('status-text').innerText = `Error: ${result ? result.error : 'Unknown error'}`;
+                }
+            } else {
+                document.getElementById('status-text').innerText = 'File selection canceled.';
+            }
+        });
+    </s    </script>    </script>    </script>    </script>cript>ript>
         document.querySelectorAll('.menu-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 const text = e.target.innerText;
