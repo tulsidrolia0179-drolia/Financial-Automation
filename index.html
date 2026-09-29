@@ -5,18 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shree FinAuto - Gateway</title>
     <style>
-        :root { --tally-teal: #1D5B79; --tally-pale-yellow: #FDFAF0; --tally-sidebar: #EBF5FB; --tally-hover: #D4E6F1; --text-dark: #333333; }
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--tally-pale-yellow); display: flex; height: 100vh; overflow: hidden; }
-        .header { position: absolute; top: 0; left: 0; right: 0; height: 50px; background-color: var(--tally-teal); color: white; display: flex; align-items: center; padding: 0 20px; font-size: 18px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .sidebar { width: 300px; background-color: var(--tally-sidebar); margin-top: 50px; border-right: 1px solid #ccc; display: flex; flex-direction: column; }
-        .menu-title { text-align: center; padding: 15px; background-color: var(--tally-teal); color: white; font-weight: bold; letter-spacing: 1px; }
-        .menu-section { padding: 10px 15px; font-weight: bold; color: var(--tally-teal); font-size: 14px; border-bottom: 1px solid #ddd; }
+        :root { --tally-teal: #1D5B79; --tally-pale-yellow: #FDFAF0; --tally-sidebar: #EBF5FB; --tally-hover: #D4E6F1; --text-dark: #2C3E50; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--tally-pale-yellow); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+        .header { position: absolute; top: 0; left: 0; right: 0; height: 50px; background-color: var(--tally-teal); color: white; display: flex; align-items: center; padding: 0 20px; font-weight: bold; font-size: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; }
+        .sidebar { width: 300px; background-color: var(--tally-sidebar); margin-top: 50px; border-right: 2px solid var(--tally-teal); display: flex; flex-direction: column; }
+        .menu-title { text-align: center; padding: 15px; background-color: var(--tally-teal); color: white; font-weight: bold; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+        .menu-section { padding: 10px 15px; font-weight: bold; color: var(--tally-teal); border-bottom: 1px solid #BDC3C7; background-color: #D6EAF8; font-size: 14px; }
         .menu-item { padding: 12px 25px; cursor: pointer; color: var(--text-dark); font-size: 15px; transition: background 0.2s; }
         .menu-item:hover { background-color: var(--tally-hover); font-weight: bold; }
         .workspace { flex: 1; margin-top: 50px; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .company-name { font-size: 28px; font-weight: bold; color: var(--tally-teal); margin-bottom: 30px; }
-        .upload-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); width: 100%; max-width: 500px; text-align: center; border: 1px dashed #ccc; }
-        .btn-primary { background-color: var(--tally-teal); color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 20px; font-weight: bold; width: 100%; }
+        .company-name { font-size: 28px; font-weight: bold; color: var(--tally-teal); margin-bottom: 30px; text-transform: uppercase; border-bottom: 2px solid var(--tally-teal); padding-bottom: 5px; }
+        .upload-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 400px; border: 1px solid #AED6F1; }
+        .btn-primary { background-color: var(--tally-teal); color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 15px; transition: background 0.2s; }
         .btn-primary:hover { background-color: #143E54; }
     </style>
 </head>
@@ -32,7 +32,7 @@
         <div class="menu-item" id="btn-curr-year">4. Load Current Year (Tally/TB)</div>
         <div class="menu-section">Processing</div>
         <div class="menu-item" id="btn-depreciation">5. Depreciation Engine</div>
-        <div class="menu-item" style="color: green; font-weight: bold;" id="btn-generate">6. Generate Final Statements</div>
+        <div class="menu-item" style="color: green; font-weight: bold;" id="btn-generate">6. Generate Final Financials</div>
     </div>
     <div class="workspace">
         <div class="company-name">Shree Drolia Financials</div>
@@ -49,6 +49,13 @@
                 document.getElementById('status-text').innerText = 'Selected: ' + text;
                 document.getElementById('action-btn').innerText = 'Process ' + text.split('.')[0];
             });
+        });
+
+        document.getElementById('action-btn').addEventListener('click', async () => {
+            const filePath = await window.api.selectFile();
+            if (filePath) {
+                document.getElementById('status-text').innerText = filePath;
+            }
         });
     </script>
 </body>
