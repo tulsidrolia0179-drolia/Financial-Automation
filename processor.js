@@ -24,4 +24,18 @@ async function extractPreviousYearData(filePath) {
     }
 }
 
-module.exports = { extractPreviousYearData };
+async function analyzeTemplate(filePath) {
+    try {
+        if (filePath.toLowerCase().endsWith('.xlsx') || filePath.toLowerCase().endsWith('.xls')) {
+            const workbook = xlsx.readFile(filePath);
+            const sheetNames = workbook.SheetNames;
+            return { success: true, type: 'template', data: sheetNames };
+        } else {
+            return { success: false, error: 'Template must be an Excel file (.xlsx or .xls).' };
+        }
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+module.exports = { extractPreviousYearData, analyzeTemplate };
